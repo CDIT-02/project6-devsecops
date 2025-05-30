@@ -2,9 +2,6 @@
 
 Sample spring application with Jenkins pipeline script to demonstrate secure pipelines
 
-
-![DevSecOps Pipeline](https://wac-cdn.atlassian.com/dam/jcr:5f26d67b-bed6-4be1-912b-4032de4d06b0/devsecops-diagram.png?cdnVersion=2318)
-
 ![build](https://github.com/user-attachments/assets/86bf79e4-fb6f-4c81-9ad1-6d73a73ae536)
 
 
