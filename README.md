@@ -194,19 +194,25 @@ kubectl create secret -n ci docker-registry regcred --docker-server=https://inde
 
 
 
-1. Talisman Installation
-====================
+## 1. Talisman Installation
+
 https://thoughtworks.github.io/talisman/docs
 
-# Download the talisman binary
+### Download the talisman binary
+```
 curl https://thoughtworks.github.io/talisman/install.sh > ~/install-talisman.sh
 chmod +x ~/install-talisman.sh
+```
 
-# Install to a single project (as pre-push hook)
+### Install to a single project (as pre-push hook)
+```
 cd my-git-project
 ~/install-talisman.sh //pre-push hook
 ~/install-talisman.sh pre-commit //pre-commit hook
+```
 
+### How talisman works?
+```
 mkdir sec_files && cd sec_files
 echo "username:sidd-harth" > file1
 echo "secure-password1234" > password.txt
@@ -215,16 +221,24 @@ echo "base64encodedsecret=cDSgwjekrnekrjitut" > file3
 
 git commit 
 git push 
+```
 
-If you want to ignore any file, add it under .talismanrc
+If you want to ignore any file, add it in .talismanrc
+```
 fileignoreconfig:
 - filename:
   checksum:
+```
 
 
-2. SCA - OWASP dependency checker, OSS license checker, SBOM using cyclonedx
-==========================================
+## 2. SCA - OWASP dependency checker, OSS license checker
 
+SCA(Software Composition Analysis): Performs dependency vulnerability scanning using OWASP Dependency Check.
+OSS License checker:  Ensures all dependencies comply with allowed licenses & Useful for avoiding legal issues due to restrictive licenses.
+Unit Tests – Ensures code correctness.
+
+
+```
 stage(‘Static Analysis’) {
       parallel {
         stage('Unit Tests') {
@@ -264,19 +278,11 @@ stage(‘Static Analysis’) {
                   }
           }
       }
+```
 
-SCA: Performs dependency vulnerability scanning using OWASP Dependency Check.
-OSS License checker:  Ensures all dependencies comply with allowed licenses & Useful for avoiding legal issues due to restrictive licenses.
+## 3. Images build using Kaniko
 
-Unit Tests – Ensures code correctness.
-SCA (Software Composition Analysis) – Detects vulnerabilities in dependencies.
-OSS License Checker – Ensures legal compliance of third-party libraries.
-
-
-3. Images build using Kaniko
-====================
-kubectl create secret -n ci docker-registry regcred --docker-server=https://index.docker.io/v1/ --docker-username=chandikas --docker-password=xxxxxx --docker-email=erchandika@gmail.com
-
+kubectl create secret -n ci docker-registry regcred --docker-server=https://index.docker.io/v1/ --docker-username=<username> --docker-password=xxxxxx --docker-email=<email id>
 
 Configure github repo with jenkins by creating a new pipeline item
 
@@ -296,14 +302,14 @@ Add Kaniko stage in Jenkinsfile
           }
 ```
 
-Kaniko: 
-No Privileged Access Required
+### Why Kaniko: 
+No Privileged Access Required (Root)
 Designed for Kubernetes
-Builds Images Without a Docker Daemon
+Builds Images Without Docker Daemon. Compatible with OCI runtime
 Works on Different Architectures such as amd or arm64
 Lightweight
 
-4. Lint and Scan Docker image
+## 4. Lint and Scan Docker image
     Lint using dockle - Check Dockerfiles/images for best practices, Image efficiency, and maintainability
       Best practises:
         Base image minimal
@@ -318,21 +324,17 @@ Lightweight
       Limit Ports and Privileges
       Avoid latest Tags
 
-    
-    Docker run after multistage pipeline and nonroot user
-      docker run --rm -v $(pwd):/app bitnami/trivy image --exit-code 1 xxxxxx/dsodemo:multistage
-      docker run --rm goodwithtech/dockle:v${DOCKLE_LATEST} docker.io/xxxxxx/dsodemo:multistage
-    
 
-5. Deploy using ArgoCD
+## 5. Deploy using ArgoCD
 
 
-Setup ArgoCD server & Login to its dashboard
-==================
+### Setup ArgoCD server & Login to its dashboard
+
+```
 kubectl create namespace argocd
 kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
 
-htpasswd -nbBC 12 "" 'admin@123' | tr -d ':\n'
+htpasswd -nbBC 12 "" 'admin@123' | tr -d ':\n'   //encrypting admin password
 
 kubectl -n argocd patch secret argocd-secret -p '{"stringData": {"admin.password": "$2y$12$.MQnKawU3ZPB9GGd2YOsIuJYfW4dvalLaKDACXueWomyXLwPMtaOi","admin.passwordMtime": "'$(date +%FT%T%Z)'"}}'
 
@@ -347,13 +349,16 @@ Allow these ports in Security group of worker nodes
 kubectl get svc -n argocd
 
 kubectl get nodes -o wide
+```
 
 Browser Access to  https://NODEIP:32100
 
-ArgoCD dashboard:
+### ArgoCD dashboard configuration
 ==========
 Create Project
   project: devsecops
+  Source repo: Repo URL
+  Destination: ANy
 Create Applications
   name: devsecops
   Namespace: dso-demo
@@ -361,9 +366,7 @@ Create Applications
   Path: deploy
 
   
-
-mkdir deploy
-
+```
 kubectl create deployment dso-demo --image=chandikas/dso-demo --replicas=1 --port=8080 --dry-run=client -o yaml | tee deploy/dso-demo-deploy.yaml
 
 kubectl create service nodeport dso-demo --tcp=8080 --node-port=30080 --dry-run -o yaml | tee deploy/dso-demo-svc.yaml
@@ -372,11 +375,12 @@ git add deploy/dso-demo-deploy.yaml deploy/dso-demo-svc.yaml
 git commit -am "add k8s manifests to deploy dso-demo app"
 git push origin main
 
-kubectl create ns dev
+kubectl create ns dso-demo
 kubectl get ns
+```
 
-argocli installation in local
-=======
+### argocli installation in local
+```
 VERSION=$(curl -L -s https://raw.githubusercontent.com/argoproj/argo-cd/stable/VERSION)
 curl -sSL -o argocd-linux-amd64 https://github.com/argoproj/argo-cd/releases/download/v$VERSION/argocd-linux-amd64
 sudo install -m 555 argocd-linux-amd64 /usr/local/bin/argocd
@@ -388,46 +392,49 @@ kubectl describe cm -n argocd argocd-cm
 argocd admin settings rbac validate --policy-file setup/jenkins.argorbacpolicy.csv
 kubectl patch cm -n argocd argocd-rbac-cm --patch-file setup/argocd_user_rbac-patch.yaml
 kubectl describe cm -n argocd argocd-rbac-cm
+```
 
 
-
-Validating via argocd cli
-===============
-argocd login  54.87.226.168:32100
+### Validating via argocd cli
+```
+argocd login  NODEIP:32100
 argocd cluster list
 
 argocd admin settings rbac can jenkins get applications devsecops/dso-demo --policy-file setup/jenkins.argorbacpolicy.csv 
 Yes
 argocd admin settings rbac can jenkins delete applications devsecops/dso-demo --policy-file setup/jenkins.argorbacpolicy.csv 
 No
-argocd admin settings rbac can jenkins sync applications devsecops/dso-demo --policy-file setup/jenkins.argorbacpolicy.csv 
-argocd admin settings rbac can jenkins get projects project6-devsecops --policy-file setup/jenkins.argorbacpolicy.csv 
+```
 
-Generate a Token for jenkins user to sync the app via the pipeline
-=========================
+### Generate a Token for jenkins user to sync the app via the pipeline
+```
 argocd account generate-token --account jenkins
-
+```
 Note: This has to be executed after login as admin user
 
-Create jenkins token as a secret in jenkins credentials > token
+Create jenkins token as a secret in jenkins credentials > secret text
 
 
 Manually sync:
 =============
+```
 argocd app sync devsecops --insecure --server 54.87.226.168:32100 --auth-token eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJhcmdvY2QiLCJzdWIiOiJqZW5raW5zOmFwaUtleSIsIm5iZiI6MTczODE2NTkyMywiaWF0IjoxNzM4MTY1OTIzLCJqdGkiOiJkNzVhNjg4OS1mZTdiLTRiMzktYjk5NS02NzFmYzlkOTM4MTgifQ.K-vl9vB6DYpuI_eIeIDdyoeqBHLu0YQyTCnzK5NCMYg
+```
 
+### Try out:
+=======
 SAST - slscan or sonarqube scan
 DAST - OWASP zap
 
 
-Cleanup
-=======
+### Cleanup
+```
 kubectl get pdb -n kube-system
 kubectl delete pdb -n kube-system coredns
 kubectl delete pdb -n kube-system ebs-csi-controller
 
 eksctl delete cluster --name=dev-secops-cluster --region=us-east-1
-
+```
 
 # Pipeline
 
